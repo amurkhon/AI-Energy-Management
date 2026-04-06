@@ -227,14 +227,14 @@ async def seed():
                 db.add_all([EnergyReading(**r) for r in readings_batch])
                 await db.flush()
                 readings_batch.clear()
-                print(f"  → {(_ + 1)} ticks processed...")
+                print(f"  >> {(_ + 1)} ticks processed...")
 
         if readings_batch:
             db.add_all([EnergyReading(**r) for r in readings_batch])
             await db.flush()
 
         await db.commit()
-        print("\n✓ Seed complete!")
+        print("\nSeed complete!")
         print("  Admin:  admin@sems.dev / admin123")
         print("  Demo:   demo@sems.dev  / demo123")
         print(f"  Devices: {len(created_devices)} created")

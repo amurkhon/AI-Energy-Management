@@ -1,23 +1,49 @@
 import time
 import uuid
-from fastapi import Request
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
+from starlette.types import ASGIApp, Receive, Send, Scope
 
 
-class RequestIDMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next) -> Response:
-        request_id = str(uuid.uuid4())
-        request.state.request_id = request_id
-        response = await call_next(request)
-        response.headers["X-Request-ID"] = request_id
-        return response
+class RequestIDMiddleware:
+    """Pure ASGI middleware — does NOT wrap/buffer the request body."""
+
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] == "http":
+            scope.setdefault("state", {})
+            scope["state"]["request_id"] = str(uuid.uuid4())
+
+            async def send_with_header(message):
+                if message["type"] == "http.response.start":
+                    headers = list(message.get("headers", []))
+                    headers.append((b"x-request-id", scope["state"]["request_id"].encode()))
+                    message = {**message, "headers": headers}
+                await send(message)
+
+            await self.app(scope, receive, send_with_header)
+        else:
+            await self.app(scope, receive, send)
 
 
-class TimingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next) -> Response:
-        start = time.perf_counter()
-        response = await call_next(request)
-        elapsed_ms = (time.perf_counter() - start) * 1000
-        response.headers["X-Response-Time"] = f"{elapsed_ms:.2f}ms"
-        return response
+class TimingMiddleware:
+    """Pure ASGI middleware — does NOT wrap/buffer the request body."""
+
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] == "http":
+            start = time.perf_counter()
+
+            async def send_with_timing(message):
+                if message["type"] == "http.response.start":
+                    elapsed_ms = (time.perf_counter() - start) * 1000
+                    headers = list(message.get("headers", []))
+                    headers.append((b"x-response-time", f"{elapsed_ms:.2f}ms".encode()))
+                    message = {**message, "headers": headers}
+                await send(message)
+
+            await self.app(scope, receive, send_with_timing)
+        else:
+            await self.app(scope, receive, send)

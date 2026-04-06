@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Depends
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.session import get_db
-from app.schemas.auth import RegisterRequest, TokenResponse, RefreshRequest, UserOut
+from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, RefreshRequest, UserOut
 from app.models.user import User
 from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token, decode_token
 from app.core.exceptions import ConflictError, UnauthorizedError
@@ -28,10 +27,10 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(form: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == form.username, User.is_active == True))
+async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.email == body.email, User.is_active == True))
     user = result.scalar_one_or_none()
-    if not user or not verify_password(form.password, user.hashed_password):
+    if not user or not verify_password(body.password, user.hashed_password):
         raise UnauthorizedError("Invalid credentials")
     return TokenResponse(
         access_token=create_access_token(str(user.id)),

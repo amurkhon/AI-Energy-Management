@@ -1,4 +1,5 @@
 import json
+import pandas as pd
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +13,7 @@ from app.models.device import Device, DeviceType
 from app.models.reading import EnergyReading
 from app.models.alert import AlertEvent, AlertSeverity
 from app.models.suggestion import AISuggestion
+from app.ai.efficiency.classifier import predict_from_df
 import redis.asyncio as aioredis
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -98,6 +100,30 @@ async def dashboard(
 
     renewable_pct = round(renewable_kwh / today_kwh * 100, 1) if today_kwh > 0 else 0.0
 
+    # Efficiency score (last 24h readings for all devices)
+    efficiency_score = None
+    efficiency_label = "unknown"
+    if device_ids:
+        readings_res = await db.execute(
+            select(EnergyReading)
+            .where(
+                EnergyReading.device_id.in_(device_ids),
+                EnergyReading.recorded_at >= now - timedelta(hours=24),
+            )
+            .order_by(EnergyReading.recorded_at.asc())
+        )
+        readings = readings_res.scalars().all()
+        if readings:
+            profile = devices[0].sim_profile.value if devices else "residential"
+            df = pd.DataFrame([{
+                "recorded_at": r.recorded_at,
+                "power_kw": r.power_kw,
+                "energy_kwh": r.energy_kwh,
+            } for r in readings])
+            pred = predict_from_df(df, profile=profile)
+            efficiency_score = pred["efficiency_score"]
+            efficiency_label = pred["label"]
+
     return {
         "timestamp": now.isoformat(),
         "total_power_kw": round(total_power_kw, 3),
@@ -108,4 +134,6 @@ async def dashboard(
         "active_devices": len(devices),
         "critical_alerts": critical_alerts,
         "top_suggestions": top_suggestions,
+        "efficiency_score": efficiency_score,
+        "efficiency_label": efficiency_label,
     }
