@@ -1,5 +1,4 @@
 import pandas as pd
-from typing import list as List
 
 
 def rule_based_anomalies(df: pd.DataFrame, device: dict) -> list[dict]:

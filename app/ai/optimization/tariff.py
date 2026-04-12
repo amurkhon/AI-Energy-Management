@@ -18,7 +18,6 @@ def get_rate(hour: int, tariff: str = "tou") -> float:
 
 def cheapest_window(duration_hours: float, tariff: str = "tou") -> dict:
     """Find the cheapest consecutive window of given duration."""
-    hours = list(range(24))
     duration = int(duration_hours)
     best_cost = float("inf")
     best_start = 0

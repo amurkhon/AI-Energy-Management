@@ -51,7 +51,7 @@ def build_forecast_features(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return df
     df = df.copy()
-    df["lag_1h"] = df["power_kw"].shift(60).fillna(method="bfill")
-    df["lag_24h"] = df["power_kw"].shift(1440).fillna(method="bfill")
-    df["lag_168h"] = df["power_kw"].shift(10080).fillna(method="bfill")
+    df["lag_1h"] = df["power_kw"].shift(60).bfill()
+    df["lag_24h"] = df["power_kw"].shift(1440).bfill()
+    df["lag_168h"] = df["power_kw"].shift(10080).bfill()
     return df

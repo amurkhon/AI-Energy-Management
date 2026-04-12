@@ -11,7 +11,7 @@ from app.dependencies import get_current_user
 from app.models.user import User
 from app.models.device import Device, DeviceType
 from app.models.reading import EnergyReading
-from app.models.alert import AlertEvent, AlertSeverity
+from app.models.alert import AlertRule, AlertEvent, AlertSeverity
 from app.models.suggestion import AISuggestion
 from app.ai.efficiency.classifier import predict_from_df
 import redis.asyncio as aioredis
@@ -57,8 +57,8 @@ async def dashboard(
 
     # Active unacknowledged alerts (last 24h)
     rule_ids_res = await db.execute(
-        select(__import__('app.models.alert', fromlist=['AlertRule']).AlertRule.id)
-        .where(__import__('app.models.alert', fromlist=['AlertRule']).AlertRule.user_id == current_user.id)
+        select(AlertRule.id)
+        .where(AlertRule.user_id == current_user.id)
     )
     rule_ids = list(rule_ids_res.scalars())
 

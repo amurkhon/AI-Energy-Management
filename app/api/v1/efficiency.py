@@ -9,7 +9,7 @@ POST /api/v1/efficiency/analyze        — trigger on-demand efficiency analysis
 
 import uuid
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import pandas as pd
@@ -213,12 +213,10 @@ async def efficiency_history(
 
 @router.post("/analyze", status_code=202)
 async def trigger_analysis(
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
 ):
     """Trigger on-demand efficiency analysis (same as AI suggestions but focused on efficiency)."""
     from app.ai.engine import run_ai_analysis
-    from fastapi import BackgroundTasks
-    # Run synchronously in background
-    import asyncio
-    asyncio.create_task(run_ai_analysis(str(current_user.id)))
+    background_tasks.add_task(run_ai_analysis, str(current_user.id))
     return {"message": "Efficiency analysis triggered", "user_id": str(current_user.id)}

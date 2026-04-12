@@ -1,6 +1,6 @@
 import uuid
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
@@ -79,7 +79,7 @@ async def create_reading(
             "power_kw": body.power_kw,
             "energy_kwh": body.energy_kwh,
             "state_of_charge": body.state_of_charge,
-            "recorded_at": (body.recorded_at or datetime.utcnow()).isoformat(),
+            "recorded_at": (body.recorded_at or datetime.now(timezone.utc)).isoformat(),
         }),
         ex=3600,
     )
