@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     app_port: int = 8000
 
     # Database
-    database_url: str = "postgresql+asyncpg://postgres:Amir2002_@localhost:5432/energy_db"
+    database_url: str = "postgresql+asyncpg://zem@localhost:5432/energy_db"
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
