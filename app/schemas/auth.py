@@ -6,10 +6,11 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     full_name: str | None = None
+    username: str | None = None
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    identifier: str  # email or username
     password: str
 
 
@@ -26,6 +27,7 @@ class RefreshRequest(BaseModel):
 class UserOut(BaseModel):
     id: UUID
     email: str
+    username: str | None
     full_name: str | None
     role: str
     is_active: bool

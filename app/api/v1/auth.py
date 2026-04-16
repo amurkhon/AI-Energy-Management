@@ -18,6 +18,7 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
         raise ConflictError("Email already registered")
     user = User(
         email=body.email,
+        username=body.username,
         hashed_password=hash_password(body.password),
         full_name=body.full_name,
     )
@@ -28,7 +29,11 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == body.email, User.is_active == True))
+    if "@" in body.identifier:
+        clause = User.email == body.identifier
+    else:
+        clause = User.username == body.identifier
+    result = await db.execute(select(User).where(clause, User.is_active == True))
     user = result.scalar_one_or_none()
     if not user or not verify_password(body.password, user.hashed_password):
         raise UnauthorizedError("Invalid credentials")
