@@ -5,10 +5,10 @@ from datetime import datetime
 class Battery:
     """Simulates a battery with charge/discharge logic based on net grid power."""
 
-    def __init__(self, capacity_kwh: float = 13.5, charge_rate_kw: float = 5.0, initial_soc: float = 0.5):
+    def __init__(self, capacity_kwh: float = 13.5, charge_rate_kw: float = 5.0, initial_soc: float | None = None):
         self.capacity_kwh = capacity_kwh
         self.charge_rate_kw = charge_rate_kw
-        self.soc = initial_soc  # 0.0 - 1.0
+        self.soc = initial_soc if initial_soc is not None else 0.5  # 0.0 - 1.0
 
     def generate_reading(self, sim_time: datetime, weather: dict, net_grid_kw: float = 0.0, tick_hours: float = 1 / 60, **kwargs) -> dict:
         """

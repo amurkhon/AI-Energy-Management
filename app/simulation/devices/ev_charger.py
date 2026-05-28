@@ -6,12 +6,12 @@ class EVCharger:
     """Simulates EV charger with schedule-based charging."""
 
     def __init__(self, charge_power_kw: float = 7.4, charge_start_hour: int = 23, charge_end_hour: int = 6,
-                 battery_capacity_kwh: float = 60.0, initial_soc: float = 0.3):
+                 battery_capacity_kwh: float = 60.0, initial_soc: float | None = None):
         self.charge_power_kw = charge_power_kw
         self.charge_start_hour = charge_start_hour
         self.charge_end_hour = charge_end_hour
         self.battery_capacity_kwh = battery_capacity_kwh
-        self.soc = initial_soc
+        self.soc = initial_soc if initial_soc is not None else 0.3
 
     def _is_charging_time(self, hour: int) -> bool:
         if self.charge_start_hour > self.charge_end_hour:

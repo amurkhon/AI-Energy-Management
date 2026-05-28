@@ -75,7 +75,9 @@ async def create_rule(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    rule = AlertRule(user_id=current_user.id, **body.model_dump())
+    data = body.model_dump()
+    data['cooldown_mins'] = data.pop('cooldown_minutes', 60)
+    rule = AlertRule(user_id=current_user.id, **data)
     db.add(rule)
     await db.flush()
     return rule
@@ -89,8 +91,11 @@ async def update_rule(
     current_user: User = Depends(get_current_user),
 ):
     rule = await _get_owned_rule(rule_id, current_user.id, db)
-    for field, value in body.model_dump(exclude_none=True).items():
-        setattr(rule, field, value)
+    data = body.model_dump(exclude_none=True)
+    if 'cooldown_minutes' in data:
+        data['cooldown_mins'] = data.pop('cooldown_minutes')
+    for key, value in data.items():
+        setattr(rule, key, value)
     await db.flush()
     return rule
 

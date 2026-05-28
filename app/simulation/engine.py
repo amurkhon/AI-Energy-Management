@@ -3,6 +3,7 @@ import json
 import asyncio
 from datetime import datetime, timezone, timedelta
 from typing import Any
+from sqlalchemy import select, desc
 from app.simulation.weather import WeatherSimulator
 from app.simulation.occupancy import OccupancySimulator
 from app.simulation.devices.solar_panel import SolarPanel
@@ -53,6 +54,7 @@ async def run_simulation_tick(
     Also publishes readings to Redis pub/sub for WebSocket broadcasting.
     """
     from app.cache.keys import CHANNEL_READINGS, device_latest
+    from app.models.reading import EnergyReading
 
     weather_sim = WeatherSimulator(latitude=devices[0].get("latitude", 40.0) if devices else 40.0)
     weather = weather_sim.get_conditions(sim_time)
@@ -60,9 +62,25 @@ async def run_simulation_tick(
     readings = []
     sim_devices: dict[str, Any] = {}
 
-    # Build sim device instances
+    # Build sim device instances with state loaded from previous reading
     for d in devices:
-        sim_device = build_sim_device(d["device_type"], d.get("metadata_") or {})
+        metadata = d.get("metadata_") or {}
+        
+        # For stateful devices, load previous state from latest reading
+        if d["device_type"] in ("battery", "ev_charger"):
+            result = await db_session.execute(
+                select(EnergyReading)
+                .where(EnergyReading.device_id == uuid.UUID(d["id"]))
+                .order_by(desc(EnergyReading.recorded_at))
+                .limit(1)
+            )
+            prev_reading = result.scalar_one_or_none()
+            if prev_reading and prev_reading.state_of_charge is not None:
+                # Convert percentage back to 0-1 range for the device
+                initial_soc = prev_reading.state_of_charge / 100.0
+                metadata = {**metadata, "initial_soc": initial_soc}
+        
+        sim_device = build_sim_device(d["device_type"], metadata)
         if sim_device:
             sim_devices[d["id"]] = (d, sim_device)
 

@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ConfigDict
 from app.models.alert import AlertMetric, AlertOperator, AlertSeverity
 
 
@@ -13,7 +13,7 @@ class AlertRuleCreate(BaseModel):
     threshold: float
     window_minutes: int = 5
     severity: AlertSeverity = AlertSeverity.warning
-    cooldown_mins: int = 60
+    cooldown_minutes: int = 60
 
 
 class AlertRuleUpdate(BaseModel):
@@ -21,10 +21,12 @@ class AlertRuleUpdate(BaseModel):
     threshold: float | None = None
     severity: AlertSeverity | None = None
     is_active: bool | None = None
-    cooldown_mins: int | None = None
+    cooldown_minutes: int | None = None
 
 
 class AlertRuleOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
     id: uuid.UUID
     user_id: uuid.UUID
     device_id: uuid.UUID | None
@@ -35,10 +37,7 @@ class AlertRuleOut(BaseModel):
     severity: AlertSeverity
     is_active: bool
     window_minutes: int
-    cooldown_mins: int
-
-    class Config:
-        from_attributes = True
+    cooldown_minutes: int = Field(validation_alias='cooldown_mins')
 
 
 class AlertEventOut(BaseModel):

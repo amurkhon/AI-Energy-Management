@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 
 class ConsumptionBucket(BaseModel):
-    bucket: datetime
+    timestamp: datetime
     total_kwh: float
     avg_power_kw: float
     peak_power_kw: float
@@ -21,6 +21,7 @@ class HeatmapCell(BaseModel):
     hour: int
     day_of_week: int
     avg_kwh: float
+    count: int = 1
 
 
 class CostEstimate(BaseModel):
