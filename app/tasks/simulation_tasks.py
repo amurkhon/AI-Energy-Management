@@ -77,3 +77,12 @@ async def _run_all_active_sessions():
                 db.add(reading)
 
         await db.commit()
+
+        # Trigger AI analysis for users whose simulation sessions ran
+        from app.ai.engine import run_ai_analysis
+        user_ids = {str(session.user_id) for session in sessions if session.user_id}
+        for uid in user_ids:
+            try:
+                await run_ai_analysis(uid)
+            except Exception as e:
+                print(f"AI analysis failed for user {uid} after sim tick: {e}")

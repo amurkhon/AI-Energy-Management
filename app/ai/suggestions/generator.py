@@ -5,10 +5,11 @@ from sqlalchemy import select
 from app.models.device import Device
 from app.models.suggestion import AISuggestion, SuggestionCategory, SuggestionPriority, SuggestionSource
 from app.models.prediction import AnomalyRecord, AnomalyType
-from app.ai.feature_engineering import build_features
+from app.ai.feature_engineering import build_features, build_forecast_features
 from app.ai.anomaly.rules import rule_based_anomalies
 from app.ai.anomaly.detector import detect_ml_anomalies
 from app.ai.optimization.scheduler import load_shift_suggestion
+from app.ai.forecasting.load_forecaster import forecast as run_forecast
 from app.ai.suggestions.rule_engine import rule_based_suggestions
 from app.ai.suggestions.ranker import rank_and_deduplicate
 
@@ -84,6 +85,29 @@ async def generate_for_device(device: Device, user_id: uuid.UUID, db: AsyncSessi
     rule_suggs = rule_based_suggestions(df, device_dict)
     for rs in rule_suggs:
         raw_suggestions.append({**rs, "device_id": str(device.id)})
+
+    # 5. Forecast-based suggestions (GBM)
+    fdf = build_forecast_features(df)
+    for horizon, label in [("6h", "6 hours"), ("24h", "24 hours")]:
+        pred = run_forecast(fdf, str(device.id), horizon)
+        if pred and device.rated_capacity:
+            high_threshold = device.rated_capacity * 0.75 * float({"6h": 6, "24h": 24}.get(horizon, 6))
+            if pred["predicted_kwh"] > high_threshold:
+                raw_suggestions.append({
+                    "category": "forecast",
+                    "priority": "medium",
+                    "title": f"High consumption forecast for next {label}",
+                    "description": (
+                        f"GBM model predicts {pred['predicted_kwh']:.2f} kWh over next {label} "
+                        f"(range: {pred['lower_bound_kwh']:.2f}–{pred['upper_bound_kwh']:.2f} kWh). "
+                        f"Consider pre-scheduling deferrable loads or activating battery discharge."
+                    ),
+                    "estimated_saving_kwh": round(pred["predicted_kwh"] * 0.12, 3),
+                    "estimated_saving_cost": round(pred["predicted_kwh"] * 0.12 * 0.12, 2),
+                    "confidence_score": 0.72,
+                    "source": "ml_forecast",
+                    "device_id": str(device.id),
+                })
 
     # 5. Fetch existing suggestions for dedup
     existing_res = await db.execute(
